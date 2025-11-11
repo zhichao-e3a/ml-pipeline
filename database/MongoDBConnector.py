@@ -1,4 +1,4 @@
-from database.configs import MONGO_CONFIG, REMOTE_MONGO_CONFIG
+from config.configs import MONGO_CONFIG, REMOTE_MONGO_CONFIG
 
 import json
 import hashlib

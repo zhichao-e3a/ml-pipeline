@@ -1,6 +1,7 @@
 from utils.helpers import *
 
 import numpy as np
+from scipy.signal import find_peaks, welch
 
 def hampel_filter_1d(x, k=11, n_sigmas=3.0):
 
