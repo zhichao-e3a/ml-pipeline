@@ -17,6 +17,12 @@ class MongoDBConnector:
     def __init__(self, mode):
 
         self.mode = mode
+        config = self._config()
+        self._client = AsyncIOMotorClient(
+            config["DB_HOST"],
+            minPoolSize = 5,
+            maxPoolSize = 50
+        )
 
     def _config(self) -> Dict[str, Any]:
 
@@ -25,31 +31,23 @@ class MongoDBConnector:
         elif self.mode == "local":
             return MONGO_CONFIG
 
-    def build_client(self) -> AsyncIOMotorClient:
-
-        config = self._config()
-
-        return AsyncIOMotorClient(
-            config["DB_HOST"],
-            minPoolSize = 5,
-            maxPoolSize = 50
-        )
+    @property
+    def client(self) -> AsyncIOMotorClient:
+        return self._client
 
     @asynccontextmanager
     async def resource(self, coll_name):
 
-        client = self.build_client()
-
-        config = self._config()
+        config  = self._config()
+        client  = self.client
+        await client.admin.command('ping')
+        db      = client[config["DB_NAME"]]
+        coll    = db[coll_name]
 
         try:
-            await client.admin.command('ping')
-            db      = client[config["DB_NAME"]]
-            coll    = db[coll_name]
             yield coll
-
         finally:
-            client.close()
+            pass
 
     async def stream_all_documents(
 
@@ -66,60 +64,58 @@ class MongoDBConnector:
 
             sort = sort or [("utime", 1), ("_id", 1)]
 
-            async with self.resource(coll_name) as coll:
+            def make_cursor(base_q: Dict[str, Any], after_id=None):
 
-                def make_cursor(base_q: Dict[str, Any], after_id=None):
+                q = dict(base_q)
 
-                    q = dict(base_q)
+                if after_id is not None:
 
-                    if after_id is not None:
+                    if "_id" in q and isinstance(q["_id"], dict):
+                        q["_id"] = {**q["_id"], "$gt": after_id}
+                    else:
+                        q["_id"] = {"$gt": after_id}
 
-                        if "_id" in q and isinstance(q["_id"], dict):
-                            q["_id"] = {**q["_id"], "$gt": after_id}
-                        else:
-                            q["_id"] = {"$gt": after_id}
+                return coll.find(
+                    filter = q,
+                    projection = projection,
+                    sort = sort,
+                    batch_size = batch_size,
+                    no_cursor_timeout = True,
+                )
 
-                    return coll.find(
-                        filter = q,
-                        projection = projection,
-                        sort = sort,
-                        batch_size = batch_size,
-                        no_cursor_timeout = True,
-                    )
+            cursor = make_cursor(query)
+            buf: List[Dict[str, Any]] = []
+            last_id = None
+            retried = False
 
-                cursor = make_cursor(query)
-                buf: List[Dict[str, Any]] = []
-                last_id = None
-                retried = False
+            try:
+                while True:
+                    try:
+                        doc = await cursor.next()
+                    except StopAsyncIteration:
+                        break
+                    except AutoReconnect:
+                        if retried:
+                            raise
+                        await cursor.close()
+                        await asyncio.sleep(0.5)
+                        cursor = make_cursor(query, after_id=last_id)
+                        retried = True
+                        continue
 
-                try:
-                    while True:
-                        try:
-                            doc = await cursor.next()
-                        except StopAsyncIteration:
-                            break
-                        except AutoReconnect:
-                            if retried:
-                                raise
-                            await cursor.close()
-                            await asyncio.sleep(0.5)
-                            cursor = make_cursor(query, after_id=last_id)
-                            retried = True
-                            continue
+                    buf.append(doc)
+                    if "_id" in doc:
+                        last_id = doc["_id"]
 
-                        buf.append(doc)
-                        if "_id" in doc:
-                            last_id = doc["_id"]
-
-                        if len(buf) >= batch_size:
-                            yield buf
-                            buf = []
-
-                    if buf:
+                    if len(buf) >= batch_size:
                         yield buf
+                        buf = []
 
-                finally:
-                    await cursor.close()
+                if buf:
+                    yield buf
+
+            finally:
+                await cursor.close()
 
     async def get_all_documents(
 
@@ -326,7 +322,7 @@ class MongoDBConnector:
 
             self,
             coll_name: str,
-            query: str
+            query: Optional[Dict[str, Any]] = {}
 
     ):
 
@@ -339,4 +335,23 @@ class MongoDBConnector:
             except AutoReconnect:
                 await asyncio.sleep(0.5)
                 res = await coll.delete_one(query)
+                return res.deleted_count
+
+    async def delete_all_documents(
+
+            self,
+            coll_name: str,
+            query: Optional[Dict[str, Any]] = {}
+
+    ) -> None:
+
+        async with self.resource(coll_name) as coll:
+
+            try:
+                res = await coll.delete_many(query)
+                return res.deleted_count
+
+            except AutoReconnect:
+                await asyncio.sleep(0.5)
+                res = await coll.delete_many(query)
                 return res.deleted_count

@@ -25,7 +25,7 @@ class SQLDBConnector:
         try:
             tunnel.start()
             local_bind_port = tunnel.local_bind_port
-            print(f"SSH tunnel started on port {local_bind_port}")
+            print(f"SSH TUNNEL STARTED ON PORT {local_bind_port}")
             yield local_bind_port
 
         finally:
@@ -43,7 +43,7 @@ class SQLDBConnector:
                 host="127.0.0.1",
                 port=local_bind_port,
                 database=DB_CONFIG["DB_NAME"],
-                query={"charset": "utf8mb4"},  # keeps charset with the URL
+                query={"charset": "utf8mb4"},
             )
 
             engine = create_engine(
