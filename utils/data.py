@@ -15,7 +15,7 @@ def process_row(row, target):
     if target == 'onset' else datetime.strptime(row['add'], '%Y-%m-%d %H:%M')
 
     target = (b_datetime-m_datetime).total_seconds()/60/60/24
-    if target < 0:
+    if target < 0 or target > 100:
         return None
 
     # 8 fields
@@ -45,6 +45,7 @@ def process_row(row, target):
     fhr_windows = extract_fhr_features(fhr_preprocess(fhr_padded))
 
     record = {
+        '_id'               : f"{row['mobile']}_{row['measurement_date']}",
         'mobile'            : row['mobile'],
         'measurement_date'  : row['measurement_date'],
         'static'            : static_data,
@@ -52,6 +53,8 @@ def process_row(row, target):
         'fhr_raw'           : fhr_padded.tolist(),
         'uc_windows'        : uc_windows,
         'fhr_windows'       : fhr_windows,
+        'add'               : row['add'],
+        'onset'             : row['onset'] if target == 'onset' else None,
         'target'            : target
     }
 
