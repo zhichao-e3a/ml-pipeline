@@ -1,59 +1,59 @@
 from database.MongoDBConnector import MongoDBConnector
-from database.SQLDBConnector import SQLDBConnector
 
 import json
 import asyncio
 import pandas as pd
 from pathlib import Path
 
-mongo   = MongoDBConnector(mode='remote')
+async def combine_all():
 
-ROOT = Path(__file__).parent.parent
-OUT  = ROOT / "datasets" / f"dataset_all.json"
+    mongo   = MongoDBConnector(mode='remote')
 
-hist_add = asyncio.run(
-    mongo.get_all_documents(
+    ROOT = Path(__file__).parent.parent
+    OUT  = ROOT / "datasets" / f"dataset_all.json"
+
+    hist_add = await mongo.get_all_documents(
         coll_name="dataset_hist"
     )
-)
 
-new_add = asyncio.run(
-    mongo.get_all_documents(
+    new_add = await mongo.get_all_documents(
         coll_name="dataset_add"
     )
-)
 
-print(len(hist_add), "measurements fetched from 'dataset_hist'")
-print(len(new_add), "measurements fetched from 'dataset_add'")
+    print(len(hist_add), "measurements fetched from 'dataset_hist'")
+    print(len(new_add), "measurements fetched from 'dataset_add'")
 
-hist_df = pd.DataFrame.from_records(hist_add) ; new_df = pd.DataFrame.from_records(new_add)
+    hist_df = pd.DataFrame.from_records(hist_add) ; new_df = pd.DataFrame.from_records(new_add)
 
-dups = hist_df.merge(
-    new_df,
-    how="inner",
-    on=['mobile', 'measurement_date'],
-    suffixes=("_hist", "_new")
-)
+    dups = hist_df.merge(
+        new_df,
+        how="inner",
+        on=['mobile', 'measurement_date'],
+        suffixes=("_hist", "_new")
+    )
 
-print(len(dups), "duplicate measurements")
+    print(len(dups), "duplicate measurements")
 
-key_cols = ["mobile", "measurement_date"]
+    key_cols = ["mobile", "measurement_date"]
 
-anti = new_df.merge(hist_df[key_cols], on=key_cols, how="left", indicator=True)
-new_df_2 = anti[anti["_merge"] == "left_only"].drop(columns=["_merge"])
+    anti = new_df.merge(hist_df[key_cols], on=key_cols, how="left", indicator=True)
+    new_df_2 = anti[anti["_merge"] == "left_only"].drop(columns=["_merge"])
 
-all_df = pd.concat([hist_df, new_df_2], ignore_index=True)
+    all_df = pd.concat([hist_df, new_df_2], ignore_index=True)
 
-print(len(all_df), "measurements after merging")
-print(f"(Verify {len(hist_df)+len(new_df)-len(dups)})")
+    print(len(all_df), "measurements after merging")
+    print(f"(Verify {len(hist_df)+len(new_df)-len(dups)})")
 
-all_records = all_df.to_dict(orient="records")
+    all_records = all_df.to_dict(orient="records")
 
-with open(OUT, 'w') as outfile:
-    json.dump(all_records, outfile)
+    with open(OUT, 'w') as outfile:
+        json.dump(all_records, outfile)
 
-print(len(all_records), "measurements written to", OUT)
+    print(len(all_records), "measurements written to", OUT)
 
-asyncio.run(mongo.upsert_documents_hashed(records=all_records, coll_name=f"dataset_all"))
+    await mongo.upsert_documents_hashed(records=all_records, coll_name=f"dataset_all")
 
-print(len(all_records), "measurements upserted to 'dataset_all'")
+    print(len(all_records), "measurements upserted to 'dataset_all'")
+
+if __name__ == "__main__":
+    asyncio.run(combine_all())

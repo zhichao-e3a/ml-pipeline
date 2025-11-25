@@ -10,7 +10,7 @@ from tqdm.auto import tqdm
 
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-def main():
+async def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--target', required=True, choices=['onset', 'add', 'hist'])
@@ -21,14 +21,12 @@ def main():
 
     mongo = MongoDBConnector(mode='remote')
 
-    add_data = asyncio.run(
-        mongo.get_all_documents(
-            coll_name=f"model_data_{target}",
-            sort=[
-                ('mobile', 1),
-                ('measurement_date', 1)
-            ]
-        )
+    add_data = await mongo.get_all_documents(
+        coll_name=f"model_data_{target}",
+        sort=[
+            ('mobile', 1),
+            ('measurement_date', 1)
+        ]
     )
 
     print(len(add_data), "measurements retrieved from", f"model_data_{target}")
@@ -49,9 +47,9 @@ def main():
 
     print(len(dataset), "measurements written to", OUT)
 
-    asyncio.run(mongo.upsert_documents_hashed(records=dataset, coll_name=f"dataset_{target}"))
+    await mongo.upsert_documents_hashed(records=dataset, coll_name=f"dataset_{target}")
 
     print(len(dataset), "measurements upserted to", f"'dataset_{target}'")
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
