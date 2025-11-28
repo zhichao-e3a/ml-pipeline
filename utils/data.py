@@ -18,6 +18,8 @@ def process_row(row, target):
     if target < 0 or target > 100:
         return None
 
+    ga_exit = row['gest_age'] + target
+
     # 8 fields
     static_data = [
         # row['age'] if (row['age'] is not None and pd.notna(row['age'])) else 0,
@@ -55,7 +57,9 @@ def process_row(row, target):
         'fhr_windows'       : fhr_windows,
         'add'               : row['add'],
         'onset'             : row['onset'] if target == 'onset' else None,
-        'target'            : target
+        'target'            : target,
+        'ga_exit'           : ga_exit,
+        'preterm'           : 1 if ga_exit//7 < 37 else 0
     }
 
     return record
