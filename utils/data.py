@@ -7,12 +7,12 @@ from datetime import datetime
 
 from typing import Optional, Any
 
-def process_row(row, target):
+def process_row(row, target_type):
 
     # 2 fields
     m_datetime = datetime.strptime(row['measurement_date'], '%Y-%m-%d %H:%M:%S')
     b_datetime = datetime.strptime(row['onset'], '%Y-%m-%d %H:%M')\
-    if target == 'onset' else datetime.strptime(row['add'], '%Y-%m-%d %H:%M')
+    if target_type == 'onset' else datetime.strptime(row['add'], '%Y-%m-%d %H:%M')
 
     target = (b_datetime-m_datetime).total_seconds()/60/60/24
     if target < 0 or target > 100:
@@ -56,7 +56,7 @@ def process_row(row, target):
         'uc_windows'        : uc_windows,
         'fhr_windows'       : fhr_windows,
         'add'               : row['add'],
-        'onset'             : row['onset'] if target == 'onset' else None,
+        'onset'             : row['onset'] if target_type == 'onset' else None,
         'target'            : target,
         'ga_exit'           : ga_exit,
         'preterm'           : 1 if ga_exit//7 < 37 else 0
