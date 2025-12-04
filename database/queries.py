@@ -6,7 +6,7 @@ r.start_ts,
 r.start_test_ts,
 r.contraction_url,
 r.hb_baby_url,
--- r.raw_fetal_url,
+r.raw_fetal_url,
 r.basic_info,
 r.conclusion,
 tt.expected_born_date,
@@ -25,7 +25,6 @@ AND r.hb_baby_url <> ''
 AND tt.end_born_ts IS NOT NULL
 AND tt.end_born_ts <> 0
 AND r.utime > '{last_utime}'
-;
 """
 
 RECRUITED = """
@@ -36,7 +35,7 @@ r.start_ts,
 r.start_test_ts,
 r.contraction_url,
 r.hb_baby_url,
--- r.raw_fetal_url,
+r.raw_fetal_url,
 r.basic_info,
 r.conclusion
 FROM
@@ -48,7 +47,6 @@ AND r.contraction_url <> ''
 AND r.hb_baby_url <> ''
 AND uu.mobile IN ({numbers})
 AND r.start_ts BETWEEN UNIX_TIMESTAMP({start}) AND UNIX_TIMESTAMP({end})
-;
 """
 
 RECRUITED_PATIENTS_QUERY = """
@@ -64,7 +62,6 @@ WHERE
 u.mobile
 IN
 ({mobile_query_str})
-;
 """
 
 HISTORICAL_PATIENTS_QUERY = """
@@ -112,5 +109,4 @@ WHERE
 u.mobile
 IN
 ({mobile_query_str})
-;
 """

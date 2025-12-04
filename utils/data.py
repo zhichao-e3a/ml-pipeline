@@ -35,13 +35,13 @@ def process_row(row, target_type):
     ]
 
     # 2 fields
-    uc  = np.array(row['uc']).astype(float)
-    fhr = np.array(row['fhr']).astype(float)
 
-    if len(uc) > 2048:
+    if len(row['uc']) > 2048:
         return None
 
-    uc_padded = pad_signal(uc) ; fhr_padded = pad_signal(fhr)
+    uc_padded   = pad_signal(np.array(row['uc']).astype(float))
+    fhr_padded  = pad_signal(np.array(row['fhr']).astype(float))
+    fmov_padded = pad_signal(np.array(row['fmov']).astype(float)) if row['fmov'] is not None else None
 
     uc_windows  = extract_uc_features(uc_preprocess(uc_padded))
     fhr_windows = extract_fhr_features(fhr_preprocess(fhr_padded))
@@ -51,8 +51,12 @@ def process_row(row, target_type):
         'mobile'            : row['mobile'],
         'measurement_date'  : row['measurement_date'],
         'static'            : static_data,
-        'uc_raw'            : uc_padded.tolist(),
-        'fhr_raw'           : fhr_padded.tolist(),
+        'uc_raw'            : row['uc'],
+        'fhr_raw'           : row['fhr'],
+        'fmov_raw'          : row['fmov'],
+        'uc_padded'         : uc_padded.tolist(),
+        'fhr_padded'        : fhr_padded.tolist(),
+        'fmov_padded'       : fmov_padded.tolist() if fmov_padded is not None else None,
         'uc_windows'        : uc_windows,
         'fhr_windows'       : fhr_windows,
         'add'               : row['add'],

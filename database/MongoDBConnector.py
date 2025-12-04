@@ -1,4 +1,4 @@
-from config.configs import MONGO_CONFIG, REMOTE_MONGO_CONFIG
+from config.configs import MONGO_CONFIG, REMOTE_MONGO_CONFIG, TEST_MONGO_CONFIG
 
 import json
 import hashlib
@@ -30,6 +30,8 @@ class MongoDBConnector:
             return REMOTE_MONGO_CONFIG
         elif self.mode == "local":
             return MONGO_CONFIG
+        elif self.mode == "test":
+            return TEST_MONGO_CONFIG
 
     @property
     def client(self) -> AsyncIOMotorClient:
